@@ -1,47 +1,46 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
-import os
-import urllib.parse
+import json
 
-# Streamlit configuration for API-like usage
-st.set_page_config(page_title="YouTube Downloader API", layout="centered")
-
-# Parse URL query parameter
+# Parse query parameters
 query_params = st.experimental_get_query_params()
 youtube_url = query_params.get("url", [None])[0]
 
-# If 'url' is provided in the query, attempt to download and serve the video/audio
 if youtube_url:
     try:
-        # yt-dlp options
+        # yt-dlp options for extracting URL without downloading
         ydl_opts = {
-            'format': 'bestaudio/best',  # Best audio or single file
-            'outtmpl': './downloads/%(title)s.%(ext)s',  # File path and name format
-            'noplaylist': True,  # Download single video
+            'format': 'bestaudio/best',  # Get best audio or single file
+            'quiet': True,  # Suppress verbose output
         }
         with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(youtube_url, download=True)
-            video_title = info_dict.get('title', 'Unknown Title')
-            file_path = ydl.prepare_filename(info_dict)
+            info_dict = ydl.extract_info(youtube_url, download=False)  # No download
+            playback_url = info_dict.get('url', None)  # Direct playback URL
+            title = info_dict.get('title', 'Unknown Title')
 
-        st.success("Download successful!")
-        st.write(f"**Title:** {video_title}")
-        st.write(f"**Saved to:** {file_path}")
-
-        # Simulate redirect to playback URL (file server alternative)
-        file_url = f"/downloads/{urllib.parse.quote(os.path.basename(file_path))}"
-        st.write(f"Access your file here: {file_url}")
-
-        # Provide download button as alternative
-        with open(file_path, "rb") as f:
-            st.download_button(
-                label="Download File",
-                data=f,
-                file_name=os.path.basename(file_path),
-                mime="audio/mpeg"  # Adjust mime type if needed
-            )
+        if playback_url:
+            response = {
+                "status": "success",
+                "title": title,
+                "playback_url": playback_url
+            }
+        else:
+            response = {
+                "status": "error",
+                "message": "Could not retrieve playback URL"
+            }
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        response = {
+            "status": "error",
+            "message": str(e)
+        }
+
 else:
-    st.warning("Please add '?url=YOUR_YOUTUBE_URL' to use the API.")
+    response = {
+        "status": "error",
+        "message": "No URL provided. Use '?url=YOUTUBE_URL' in the query."
+    }
+
+# Display response as JSON
+st.json(response)
