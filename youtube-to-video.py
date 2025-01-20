@@ -1,10 +1,11 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
 import os
+import json
 import urllib.parse
 
-# Define base URL of your hosted Streamlit app
-BASE_URL = "https://vivekfy-api.streamlit.app"
+# Define base URL where the files will be hosted
+BASE_URL = "https://vivekfy-api.streamlit.app"  # Replace with your actual hosted URL
 
 # Streamlit configuration
 st.set_page_config(page_title="YouTube Downloader API", layout="centered")
@@ -25,14 +26,24 @@ if youtube_url:
             info_dict = ydl.extract_info(youtube_url, download=True)
             video_title = info_dict.get('title', 'Unknown Title')
             file_name = os.path.basename(ydl.prepare_filename(info_dict))
-            full_url = f"{BASE_URL}/downloads/{urllib.parse.quote(file_name)}"
+            download_url = f"{BASE_URL}/downloads/{urllib.parse.quote(file_name)}"
 
-        # Success message with direct URL
-        st.success("Download successful!")
-        st.write(f"**Title:** {video_title}")
-        st.write(f"**Access your file here:** [Download or Play]({full_url})")
+        # Construct JSON response
+        response = {
+            "success": True,
+            "title": video_title,
+            "download_url": download_url
+        }
+        st.json(response)
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        error_response = {
+            "success": False,
+            "error": str(e)
+        }
+        st.json(error_response)
 else:
-    st.warning("Please add '?url=YOUR_YOUTUBE_URL' to use the API.")
+    st.json({
+        "success": False,
+        "error": "Please provide a valid YouTube URL using '?url=YOUR_YOUTUBE_URL'"
+    })
