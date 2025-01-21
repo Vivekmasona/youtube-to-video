@@ -1,6 +1,7 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
 import json
+import requests
 
 # Parse query parameters
 query_params = st.experimental_get_query_params()
@@ -19,10 +20,18 @@ if youtube_url:
             title = info_dict.get('title', 'Unknown Title')
 
         if playback_url:
+            # Construct API URL and send the request
+            api_url = f"https://vivekfy.vercel.app/recive?url={playback_url}"
+            response_from_api = requests.get(api_url)  # Send GET request
+            api_status = response_from_api.status_code
+            api_response = response_from_api.json() if api_status == 200 else {"message": "API request failed"}
+
             response = {
                 "status": "success",
                 "title": title,
-                "playback_url": playback_url
+                "playback_url": playback_url,
+                "api_status": api_status,
+                "api_response": api_response
             }
         else:
             response = {
