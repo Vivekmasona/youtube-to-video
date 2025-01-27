@@ -1,6 +1,7 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
 import requests
+import json
 
 # Parse query parameters
 query_params = st.experimental_get_query_params()
@@ -39,6 +40,12 @@ if youtube_url:
                 "api_status": api_result.get("status_code"),
                 "api_response": api_result.get("response_data")
             }
+
+            # Save the response as url.json
+            with open("url.json", "w") as f:
+                json.dump(response, f)
+            st.success("Playback URL saved as url.json")
+
         else:
             response = {
                 "status": "error",
