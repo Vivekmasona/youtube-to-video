@@ -1,5 +1,6 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
+import requests
 
 # Parse query parameters
 query_params = st.experimental_get_query_params()
@@ -7,24 +8,32 @@ youtube_url = query_params.get("url", [None])[0]
 
 if youtube_url:
     try:
-        # yt-dlp options for extracting URL without downloading
+        # yt-dlp options for extracting playback URL
         ydl_opts = {
-            'format': 'bestaudio/best',  # Get best audio or single file
-            'quiet': True,  # Suppress verbose output
+            'format': 'bestaudio/best',
+            'quiet': True,
         }
         with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(youtube_url, download=False)  # Extract info
+            info_dict = ydl.extract_info(youtube_url, download=False)
             playback_url = info_dict.get('url', None)
 
         if playback_url:
-            # Construct the API URL
-            api_url = f"https://vivekfy.vercel.app/received?data={playback_url}"
+            # Encode playback URL for safe transmission
+            encoded_url = requests.utils.quote(playback_url, safe='')
 
-            # Redirect user to the constructed URL
-            st.write("Redirecting...")
-            st.experimental_set_query_params(url=playback_url)  # Update query params
-            st.markdown(f"[Click here if not redirected automatically]({api_url})")  # Fallback link
-            st.stop()  # Stop further execution after redirecting
+            # Construct the API URL
+            api_url = f"https://vivekfy.vercel.app/received?url={encoded_url}"
+
+            # Send the playback URL to the backend
+            response = requests.get(api_url)
+
+            if response.status_code == 200:
+                st.success(f"Playback URL sent successfully: {playback_url}")
+            else:
+                st.error(f"Failed to send playback URL: {response.status_code}")
+
+            # Optionally stream the audio
+            st.audio(playback_url)
 
         else:
             st.error("Could not retrieve playback URL")
