@@ -18,7 +18,7 @@ if youtube_url:
 
         if playback_url:
             # Construct the API URL
-            api_url = f"https://vivekfy.vercel.app/received?url={playback_url}"
+            api_url = f"https://vivekfy.vercel.app/received?data={playback_url}"
 
             # Redirect user to the constructed URL
             st.write("Redirecting...")
