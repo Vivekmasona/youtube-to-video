@@ -1,5 +1,6 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
+import requests
 
 # Parse query parameters
 query_params = st.experimental_get_query_params()
@@ -17,6 +18,17 @@ if youtube_url:
             playback_url = info_dict.get('url', None)
 
         if playback_url:
+            # Automatically send playback_url to your API
+            api_url = f"https://vivekfy.vercel.app/received?url={playback_url}"
+            try:
+                response = requests.get(api_url)  # Send request to your API
+                if response.status_code == 200:
+                    st.success(f"Playback URL sent to API: {playback_url}")
+                else:
+                    st.error(f"Failed to send playback URL to API: {response.status_code}")
+            except Exception as api_error:
+                st.error(f"Error calling API: {api_error}")
+
             # Stream the audio directly in Streamlit
             st.audio(playback_url)
 
