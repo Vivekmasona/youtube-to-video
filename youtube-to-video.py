@@ -16,21 +16,27 @@ if youtube_url:
         with YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(youtube_url, download=False)
             playback_url = info_dict.get('url', None)
+            title = info_dict.get('title', 'Unknown Title')
+            thumbnail = info_dict.get('thumbnail', '')
 
         if playback_url:
-            # Encode playback URL for safe transmission
-            encoded_url = requests.utils.quote(playback_url, safe='')
+            # Prepare JSON payload
+            payload = {
+                "url": playback_url,
+                "title": title,
+                "thumbnail": thumbnail
+            }
 
-            # Construct the API URL
-            api_url = f"https://vivekfy.vercel.app/received?url={encoded_url}"
+            # Vercel API URL
+            api_url = "https://your-vercel-api.vercel.app/receive"
 
-            # Send the playback URL to the backend
-            response = requests.get(api_url)
+            # Send JSON data to the backend
+            response = requests.post(api_url, json=payload)
 
             if response.status_code == 200:
-                st.success(f"Playback URL sent successfully: {playback_url}")
+                st.success("Playback data sent successfully!")
             else:
-                st.error(f"Failed to send playback URL: {response.status_code}")
+                st.error(f"Failed to send data: {response.status_code} - {response.text}")
 
             # Optionally stream the audio
             st.audio(playback_url)
