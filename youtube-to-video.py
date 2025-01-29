@@ -1,6 +1,7 @@
 import streamlit as st
 from yt_dlp import YoutubeDL
-import requests
+import subprocess
+import os
 
 # Parse query parameters
 query_params = st.experimental_get_query_params()
@@ -8,41 +9,45 @@ youtube_url = query_params.get("url", [None])[0]
 
 if youtube_url:
     try:
-        # yt-dlp options for extracting playback URL
+        # yt-dlp options for extracting playback URL and metadata
         ydl_opts = {
             'format': 'bestaudio/best',
             'quiet': True,
+            'outtmpl': 'downloaded_audio.%(ext)s',  # Save file locally
+            'postprocessors': [{
+                'key': 'FFmpegMetadata'
+            }]
         }
         with YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(youtube_url, download=False)
-            playback_url = info_dict.get('url', None)
+            info_dict = ydl.extract_info(youtube_url, download=True)
+            audio_filename = ydl.prepare_filename(info_dict).replace('.webm', '.mp3').replace('.m4a', '.mp3')
             title = info_dict.get('title', 'Unknown Title')
-            thumbnail = info_dict.get('thumbnail', '')
+            thumbnail_url = info_dict.get('thumbnail', '')
 
-        if playback_url:
-            # Prepare JSON payload
-            payload = {
-                "url": playback_url,
-                "title": title,
-                "thumbnail": thumbnail
-            }
+        # Download thumbnail
+        thumbnail_filename = "thumbnail.jpg"
+        os.system(f"wget -O {thumbnail_filename} {thumbnail_url}")
 
-            # Vercel API URL
-            api_url = "https://your-vercel-api.vercel.app/receive"
+        # Add text overlay to thumbnail using ffmpeg
+        edited_thumbnail = "edited_thumbnail.jpg"
+        overlay_text = "Vivek Masona"
+        ffmpeg_text_cmd = f"""
+        ffmpeg -i {thumbnail_filename} -vf "drawtext=text='{overlay_text}':fontcolor=white:fontsize=24:x=10:y=10" {edited_thumbnail} -y
+        """
+        os.system(ffmpeg_text_cmd)
 
-            # Send JSON data to the backend
-            response = requests.post(api_url, json=payload)
+        # Embed edited thumbnail & update metadata
+        final_audio = "final_audio.mp3"
+        ffmpeg_metadata_cmd = f"""
+        ffmpeg -i {audio_filename} -i {edited_thumbnail} -map 0:a -map 1 -metadata title="{title}" -metadata artist="Vivek Masona" -id3v2_version 3 {final_audio} -y
+        """
+        os.system(ffmpeg_metadata_cmd)
 
-            if response.status_code == 200:
-                st.success("Playback data sent successfully!")
-            else:
-                st.error(f"Failed to send data: {response.status_code} - {response.text}")
+        # Provide Download Link
+        with open(final_audio, "rb") as f:
+            st.download_button(label="Download Audio", data=f, file_name=f"{title}.mp3", mime="audio/mpeg")
 
-            # Optionally stream the audio
-            st.audio(playback_url)
-
-        else:
-            st.error("Could not retrieve playback URL")
+        st.success("Audio processed and ready for download!")
 
     except Exception as e:
         st.error(f"Error: {str(e)}")
